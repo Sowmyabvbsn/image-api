@@ -1,29 +1,19 @@
-from fastapi import FastAPI, Query, HTTPException
-from fastapi.responses import JSONResponse
+from flask import Flask, request, jsonify, redirect
 import requests
 
-app = FastAPI()
+app = Flask(__name__)
 
-@app.get("/")
-async def generate_image(
-    prompt: str = Query(None),
-    model: str = Query("default")
-):
+@app.route("/", methods=["GET"])
+def generate_image():
     try:
+        prompt = request.args.get("prompt")
+        model = request.args.get("model", "default")
         if not prompt:
-            raise HTTPException(status_code=400, detail="Missing prompt")
-
-        # Encode prompt for URL
+            return jsonify({"error": "Missing prompt"}), 400
         encoded_prompt = requests.utils.quote(prompt)
-
-        # Free image generation API (stable)
         image_url = f"https://image.pollinations.ai/prompt/{encoded_prompt}"
-
-        return JSONResponse(content={
-            "prompt": prompt,
-            "model": model,
-            "image_url": image_url
-        })
-
+        return redirect(image_url)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        return jsonify({"error": str(e)}), 500
+
+application = app
