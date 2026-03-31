@@ -1,37 +1,29 @@
-from flask import Flask, request, jsonify
-from g4f.client import Client
+from fastapi import FastAPI, Query, HTTPException
+from fastapi.responses import JSONResponse
+import requests
 
-app = Flask(__name__)
-client = Client()
+app = FastAPI()
 
-@app.route("/", methods=["GET"])
-def generate_image():
+@app.get("/")
+async def generate_image(
+    prompt: str = Query(None),
+    model: str = Query("default")
+):
     try:
-        prompt = request.args.get("prompt")
-        model = request.args.get("model", "bing")
-
         if not prompt:
-            return jsonify({"error": "Missing prompt"}), 400
+            raise HTTPException(status_code=400, detail="Missing prompt")
 
-        response = client.images.generate(
-            model=model,
-            prompt=prompt,
-            response_format="url"
-        )
+        # Encode prompt for URL
+        encoded_prompt = requests.utils.quote(prompt)
 
-        image_url = response.data[0].url
+        # Free image generation API (stable)
+        image_url = f"https://image.pollinations.ai/prompt/{encoded_prompt}"
 
-        return jsonify({
+        return JSONResponse(content={
             "prompt": prompt,
             "model": model,
             "image_url": image_url
         })
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
-if __name__ == "__main__":
-    import os
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host="0.0.0.0", port=port)
+        raise HTTPException(status_code=500, detail=str(e))
